@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Squat Exercise Quality Classifier</title>
+  <meta name="description" content="Squat exercise form quality classification using YOLOv8-pose keypoint extraction and sequence modeling.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="ambient-glow glow-top-left"></div>
+  <div class="ambient-glow glow-bottom-right"></div>
+
+  <div class="app-container">
+    <header class="app-header">
+      <div class="brand-badge">
+        <span class="pulse-dot"></span>
+        <span class="badge-text" id="modelStatusBadge">Ready</span>
+      </div>
+      <h1 class="app-title">Squat Form <span class="gradient-text">Classifier</span></h1>
+      <p class="app-subtitle">
+        Upload a video of a squat repetition to evaluate form quality using pose keypoints.
+      </p>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="main-content">
+      <!-- Upload & Preview Card -->
+      <section class="card upload-card" id="uploadSection">
+        <div class="card-header">
+          <div class="header-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-title">Video Input</h2>
+            <p class="card-desc">Select or drop a squat clip (.mp4, .mov, .avi)</p>
+          </div>
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/webm" class="file-input">
+          <div class="drop-zone-content" id="dropZonePrompt">
+            <div class="upload-icon-wrapper">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                <line x1="7" y1="2" x2="7" y2="22"/>
+                <line x1="17" y1="2" x2="17" y2="22"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <line x1="2" y1="7" x2="7" y2="7"/>
+                <line x1="2" y1="17" x2="7" y2="17"/>
+                <line x1="17" y1="17" x2="22" y2="17"/>
+                <line x1="17" y1="7" x2="22" y2="7"/>
+              </svg>
+            </div>
+            <p class="drop-primary-text">Drag and drop your squat video here</p>
+            <p class="drop-secondary-text">or <span class="browse-link">browse files</span> on your computer</p>
+            <div class="format-tags">
+              <span class="tag">MP4</span>
+              <span class="tag">MOV</span>
+              <span class="tag">AVI</span>
+              <span class="tag">Max 100MB</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Player Preview (Hidden until video selected) -->
+        <div class="video-preview-wrapper hidden" id="videoPreviewWrapper">
+          <video id="videoPreview" controls playsinline></video>
+          <div class="video-meta-bar">
+            <span class="video-filename" id="videoFileName">clip.mp4</span>
+            <button type="button" class="btn-text" id="changeVideoBtn">Change Video</button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-row">
+          <button type="button" class="btn btn-primary" id="analyzeBtn" disabled>
+            <span class="btn-text-content">Analyze Form</span>
+            <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Error Notification Banner -->
+        <div class="alert alert-error hidden" id="errorBanner">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="errorMessage">Error analyzing video.</span>
+        </div>
+      </section>
+
+      <!-- Analysis / Result Card -->
+      <section class="card result-card" id="resultSection">
+        <div class="card-header">
+          <div class="header-icon result-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-title">Analysis Results</h2>
+            <p class="card-desc">Deep learning model prediction & confidence</p>
+          </div>
+        </div>
+
+        <!-- Idle State Placeholder -->
+        <div class="result-idle-state" id="resultIdleState">
+          <div class="idle-graphic">
+            <div class="idle-circle outer"></div>
+            <div class="idle-circle middle"></div>
+            <div class="idle-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="5" r="3"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="12" y1="16" x2="8" y2="22"/>
+                <line x1="12" y1="16" x2="16" y2="22"/>
+                <line x1="8" y1="11" x2="16" y2="11"/>
+              </svg>
+            </div>
+          </div>
+          <p class="idle-text">Select a video and click <strong>Analyze Form</strong> to evaluate squat biomechanics.</p>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-state hidden" id="loadingState">
+          <div class="spinner-wrapper">
+            <div class="spinner"></div>
+            <div class="spinner-core"></div>
+          </div>
+          <h3 class="loading-step-title" id="loadingStepTitle">Processing Video</h3>
+          <p class="loading-desc" id="loadingDesc">Extracting 17 COCO joints across sampled frames...</p>
+        </div>
+
+        <!-- Active Result State -->
+        <div class="result-active-state hidden" id="resultActiveState">
+          <!-- Verdict Banner -->
+          <div class="verdict-banner" id="verdictBanner">
+            <div class="verdict-icon-box" id="verdictIconBox">
+              <svg id="verdictIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"></svg>
+            </div>
+            <div class="verdict-details">
+              <span class="verdict-tag" id="verdictTag">PREDICTION</span>
+              <h3 class="verdict-title" id="verdictTitle">Good Form</h3>
+            </div>
+            <div class="verdict-confidence-badge" id="confidenceBadge">
+              <span class="conf-num" id="confidenceValue">88.4%</span>
+              <span class="conf-lbl">Confidence</span>
+            </div>
+          </div>
+
+          <!-- Class Probabilities -->
+          <div class="probabilities-section">
+            <h4 class="section-label">Class Probability Distribution</h4>
+            
+            <div class="prob-row">
+              <div class="prob-header">
+                <span class="prob-name">Good Form</span>
+                <span class="prob-val" id="goodProbVal">88.4%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar progress-good" id="goodProgressBar" style="width: 88.4%"></div>
+              </div>
+            </div>
+
+            <div class="prob-row">
+              <div class="prob-header">
+                <span class="prob-name">Needs Correction (Bad Form)</span>
+                <span class="prob-val" id="badProbVal">11.6%</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar progress-bad" id="badProgressBar" style="width: 11.6%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">Model Architecture</span>
+              <span class="stat-value" id="statModel">Bi-GRU</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Temporal Window</span>
+              <span class="stat-value" id="statFrames">32 Frames</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Feature Dimension</span>
+              <span class="stat-value">51 (17 Keypoints)</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Evaluation Metric</span>
+              <span class="stat-value">Grouped 5-Fold CV</span>
+            </div>
+          </div>
+
+          <!-- Action Reset -->
+          <button type="button" class="btn btn-secondary" id="resetBtn">
+            <span>Analyze Another Video</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>
+        <strong>Disclaimer:</strong> This model predicts experimental dataset labels only and does not provide clinical diagnosis or injury risk assessment.
+      </p>
+      <p class="attribution">
+        Mendeley Fitness Dataset (CC BY 4.0, DOI: 10.17632/kgbb3yn47p.1) • Pretrained YOLOv8n-pose
+      </p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

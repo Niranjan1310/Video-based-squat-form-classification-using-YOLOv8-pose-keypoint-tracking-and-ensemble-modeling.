@@ -308,7 +308,6 @@ D:\DL\
 │   ├── index.html                      # Dark-glassmorphism web interface
 │   └── style.css                       # Responsive theme styles & animations
 ├── yolov8n-pose.pt                     # Pretrained YOLOv8n pose weights
-├── PROJECT_PLAN.md                     # Engineering roadmap & design milestones
 ├── README.md                           # Documentation & quickstart guide
 └── requirements.txt                    # Project dependencies
 ```
